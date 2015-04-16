@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv='Content-type' content='text/html; charset=utf-8'>
-    <title>Hello React</title>
+    <title>Microbets BETA</title>
 
     <!-- React JS -->
     <script src="bower_components/react/react.js"></script>
@@ -39,7 +39,7 @@
           return (
             <div className="bet">
               <h2 className="betAuthor">{this.props.author}</h2>
-              <h3 classNAme="value">{this.props.val}</h3>
+              <h3 classNAme="value">{"$"+this.props.val}</h3>
               <span dangerouslySetInnerHTML={{__html: rawMarkup}} />
             </div>
           );
