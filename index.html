@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv='Content-type' content='text/html; charset=utf-8'>
+    <title>Hello React</title>
+
+    <!-- React JS -->
+    <script src="bower_components/react/react.js"></script>
+    <script src="bower_components/react/JSXTransformer.js"></script>
+
+    <!-- Firebase JS -->
+    <script src="bower_components/firebase/firebase.js"></script>
+
+    <!-- ReactFireMixin -->
+    <script src="bower_components/reactfire/dist/reactfire.min.js"></script>
+
+    <!-- Markdown -->
+    <script src="bower_components/showdown/compressed/showdown.js"></script>
+
+  </head>
+  <body>
+
+    <div id="content"></div>
+
+    <script type="text/jsx">
+      /**
+       * @jsx React.DOM
+       */
+      // The above declaration must remain intact at the top of the script.
+
+      // IMPORTANT: Replace below with your Firebase app URL
+      var firebaseApp = "https://microbets.firebaseio.com/";
+
+      var converter = new Showdown.converter();
+
+      var Bet = React.createClass({
+        render: function() {
+          var rawMarkup = converter.makeHtml(this.props.children.toString());
+          return (
+            <div className="bet">
+              <h2 className="betAuthor">{this.props.author}</h2>
+              <h3 classNAme="value">{this.props.val}</h3>
+              <span dangerouslySetInnerHTML={{__html: rawMarkup}} />
+            </div>
+          );
+        }
+      });
+
+      var BetList = React.createClass({
+        render: function() {
+          var betNodes = this.props.data.map(function (bet, index) {
+            return <Bet key={index} author={bet.author} val={bet.val}>{bet.text}</Bet>;
+          });
+          return <div className="betList">{betNodes}</div>;
+        }
+      });
+
+      var BetForm = React.createClass({
+        handleSubmit: function() {
+          var author = this.refs.author.getDOMNode().value.trim();
+          var text = this.refs.text.getDOMNode().value.trim();
+          var val = this.refs.val.getDOMNode().value.trim();
+          this.props.onBetSubmit({author: author, text: text, val: val});
+          this.refs.author.getDOMNode().value = '';
+          this.refs.text.getDOMNode().value = '';
+          this.refs.val.getDOMNode().value = '';
+          return false;
+        },
+        render: function() {
+          return (
+            <form className="betForm" onSubmit={this.handleSubmit}>
+              <input type="text" placeholder="Your name" ref="author" />
+              <input type="text" placeholder="Whats the bet?" ref="text" />
+              <input type="text" placeholder="For how much?" ref="val" />
+              <input type="submit" value="Post" />
+            </form>
+          );
+        }
+      });
+
+      var BetBox = React.createClass({
+        mixins: [ReactFireMixin],
+
+        handleBetSubmit: function(bet) {
+          var bets = this.state.data;
+          bets.push(bet);
+          this.setState({data: bets});
+
+          // Here we push the update out to Firebase
+          this.firebaseRefs["data"].push(bet);
+        },
+        getInitialState: function() {
+          return {data: []};
+        },
+        componentWillMount: function() {
+          // Here we bind the component to Firebase and it handles all data updates,
+          // no need to poll as in the React example.
+          this.bindAsArray(new Firebase(firebaseApp + "betBox"), "data");
+        },
+        render: function() {
+          return (
+            <div className="betBox">
+              <h1>Bets</h1>
+              <BetList data={this.state.data} />
+              <BetForm onBetSubmit={this.handleBetSubmit} />
+            </div>
+          );
+        }
+      });
+
+      React.render(
+        <BetBox />,
+        document.getElementById('content')
+      );
+    </script>
+  </body>
+</html>
