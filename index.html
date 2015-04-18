@@ -142,9 +142,9 @@
 		        render: function() {
 		          return (
 		            <div className="betBox">
-		              <h1>Bets</h1>
-		              <BetList data={this.state.data} />
 		              <BetForm onBetSubmit={this.handleBetSubmit} />
+		              <h1>Previous bets</h1>
+		              <BetList data={this.state.data} />
 		            </div>
 		          );
 		        }
@@ -159,7 +159,7 @@
       </div>
 
       <footer class="footer">
-        <p>&copy; Company 2014</p>
+        <p>&copy; Ramsey McGrath 2015</p>
       </footer>
 
     </div> <!-- /container -->
