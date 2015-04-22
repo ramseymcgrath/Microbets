@@ -63,19 +63,19 @@
 			      var PeopleToBet = React.createClass({
 			        mixins : [ReactFireMixin],
 			        componentWillMount : function() {
-			          this.bindAsArray(new Firebase(firebaseApp + '/users/' + this.props.name + '/betList'), 'betList');
+			          this.bindAsArray(new Firebase(firebaseApp + '/users/' + this.props.name + '/friendList'), 'friendList');
 			        },
 			        getInitialState : function() {
 			          return {
 			            newPerson : '',
-			            betList : [],
+			            friendList : [],
 			            showError : false
 			          };
 			        },
 			        _sendBet : function(personToBet, betText, betVal) {
 			          var betRecipient = new Firebase(firebaseApp + '/users/' + personToBet);
-			          var betList = new Firebase(betRecipient + '/bets/');
-			          var newBetRef = betList.push({ user: personToBet, text: betText, value: betVal });
+			          var friendList = new Firebase(betRecipient + '/bets/');
+			          var newBetRef = friendList.push({ user: personToBet, text: betText, value: betVal });
 			          betRecipient.child('betCount').set((data.val().betCount + 1) || 1);
 			        },
 			        _handleChange : function(event) {
@@ -99,7 +99,7 @@
 			              return;
 			            }
 			 
-			            $this.firebaseRefs['betList'].push({
+			            $this.firebaseRefs['friendList'].push({
 			              name: $this.state.newPerson.trim()
 			            });
 			 
@@ -125,7 +125,7 @@
 			            <section>
 			              <ul>
 				              {
-					              	this.state.betList.map(function(person) 
+					              	this.state.friendList.map(function(person) 
 					              	{
 					                return <li>{person.name} 
 					                <form className="betForm" onSubmit={this.handleSubmit}>
