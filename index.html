@@ -12,6 +12,8 @@
     <!-- React JS -->
     <script src="bower_components/react/react.js"></script>
     <script src="bower_components/react/JSXTransformer.js"></script>
+    <!-- Firebase Login JS -->
+    <script src="https://cdn.firebase.com/js/simple-login/1.6.1/firebase-simple-login.js"></script>
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <!-- Firebase JS -->
     <script src="bower_components/firebase/firebase.js"></script>
@@ -45,127 +47,225 @@
 
   <body>
 
+  	<script type="text/jsx">
+	/**
+     * @jsx React.DOM
+     */
+    // The above declaration must remain intact at the top of the script.
+	var firebaseApp = "https://microbets.firebaseio.com/";
+	var converter = new Showdown.converter();
+	var UserDisplay = React.createClass({
+			        render : function() {
+			          return <h3>Username: {this.props.user.name}</h3>;
+			        }
+			      });
+			 		
+			      var PeopleToBet = React.createClass({
+			        mixins : [ReactFireMixin],
+			        componentWillMount : function() {
+			          this.bindAsArray(new Firebase(firebaseApp + '/users/' + this.props.name + '/betList'), 'betList');
+			        },
+			        getInitialState : function() {
+			          return {
+			            newPerson : '',
+			            betList : [],
+			            showError : false
+			          };
+			        },
+			        _sendBet : function(personToBet, betText, betVal) {
+			          var betRecipient = new Firebase(firebaseApp + '/users/' + personToBet);
+			          var betList = new Firebase(betRecipient + '/bets/');
+			          var newBetRef = betList.push({ user: personToBet, text: betText, value: betVal });
+			          betRecipient.child('betCount').set((data.val().betCount + 1) || 1);
+			        },
+			        _handleChange : function(event) {
+			          this.setState({
+			            showError : false,
+			            newPerson : event.target.value
+			          });
+			        },
+			        _addPerson : function() {
+			          if (!this.state.newPerson.trim()) {
+			            return;
+			          }
+			 
+			          var $this = this;
+			          var newPersonRef = new Firebase(firebaseApp + '/users/' + this.state.newPerson.trim());
+			          newPersonRef.once('value', function(data) {
+			            if (!data.val()) {
+			              $this.setState({
+			                showError : true
+			              });
+			              return;
+			            }
+			 
+			            $this.firebaseRefs['betList'].push({
+			              name: $this.state.newPerson.trim()
+			            });
+			 
+			            $this.setState({
+			              showError : false,
+			              newPerson : ''
+			            });
+			          });
+			 
+			        },
+			        handleSubmit: function() {
+			          var text = this.refs.text.getDOMNode().value.trim();
+			          var val = this.refs.val.getDOMNode().value.trim();
+			          var name = this.refs.name.getDOMNode().value.trim();
+			          debugger;
+			          this._sendBet(name, text, val);
+			          this.refs.text.getDOMNode().value = '';
+			          this.refs.val.getDOMNode().value = '';
+			          return false;
+			        },
+			        render : function() {
+			          return (
+			            <section>
+			              <ul>
+				              {
+					              	this.state.betList.map(function(person) 
+					              	{
+					                return <li>{person.name} 
+					                <form className="betForm" onSubmit={this.handleSubmit}>
+					                  <input type="text" placeholder="Name?" readOnly value={person.name} ref="name" />
+						              <input type="text" placeholder="Whats the bet?" ref="text" />
+						              <input type="text" placeholder="For how much?" ref="val" />
+						              <input type="submit" value="Post" />
+						            </form>
+		         					</li>;
+					                 }, 
+				              this)}
+			              </ul>
+			 
+			              <input type="text" value={this.state.newPerson} onChange={this._handleChange} />
+			              <button onClick={this._addPerson}>Add to User List</button>
+			              {this.state.showError ? 'That person doesn\'t exist!' : ''}
+			            </section>
+			          );
+			        }
+
+			      });
+			 
+			      var BetCount = React.createClass({
+			        render : function() {
+			          return <div>Bet Count: {this.props.user.betCount || 0}</div>;
+			        }
+			      });
+			 
+			      var App = React.createClass({
+			        mixins : [ReactFireMixin],
+			        componentWillMount : function() {
+			 
+			          var $this = this;
+			 
+			          $this.authRef = new FirebaseSimpleLogin(new Firebase(firebaseApp), function(error, user) {
+			            $this.setState({
+			              errorMsg : ''
+			            });
+			 
+			            if (error) {
+			              // an error occurred while attempting login
+			              $this.setState({
+			                errorMsg : error.message,
+			                authenticated : false
+			              });
+			            } else if (user) {
+			              // user authenticated with Firebase
+			 
+			              $this.setState({
+			                name : user.username,
+			                authenticated : true
+			              });
+			 
+			              var newRef = new Firebase(firebaseApp + '/users/' + user.username);
+			 
+			              $this.bindAsObject(newRef, 'user');
+			              newRef.child('name').set(user.username);
+			 
+			            } else {
+			              // user is logged out
+			              $this.setState({
+			                authenticated : false
+			              });
+			            }
+			          });
+			        },
+			        getInitialState : function() {
+			          return {
+			            name : '',
+			            user : {},
+			            errorMsg : '',
+			            authenticated : false
+			          };
+			        },
+			        _logout : function() {
+			          this.authRef.logout();
+			        },
+			        _login : function() {
+			          this.authRef.login('twitter', {
+			            rememberMe: true
+			          });
+			        },
+			        render : function() {
+			 
+			          var loggedIn = (
+			            <section>
+			              <a href="#" onClick={this._logout}>Logout</a>
+			              <UserDisplay user={this.state.user} />
+			              <PeopleToBet name={this.state.name} />
+			              <BetCount user={this.state.user} />
+			            </section>
+			          );
+			 
+			          var loggedOut = (
+			            <section>
+			              <a class="btn btn-lg btn-success" href="#" role="button" onClick={this._login}>Login</a>
+			              <div>{this.state.errorMsg ? ('Error : ' + this.state.errorMsg) : ''}</div>
+			            </section>
+			          );
+			 
+			          return this.state.authenticated ? loggedIn : loggedOut;
+			        }
+			      });
+	</script>
+
     <div class="container">
-      <div class="header clearfix">
-        <nav>
-          <ul class="nav nav-pills pull-right">
-            <li role="presentation" class="active"><a href="#">Home</a></li>
-            <li role="presentation"><a href="#">About</a></li>
-            <li role="presentation"><a href="#">Contact</a></li>
-          </ul>
-        </nav>
-        <h3 class="text-muted">Microbets</h3>
-      </div>
+	
+	      
+	      <div class="header clearfix">
+	        <nav>
+	          <ul class="nav nav-pills pull-right">
+	            <li role="presentation" class="active"><a href="#">Home</a></li>
+	            <li role="presentation"><a href="#">About</a></li>
+	            <li role="presentation"><a href="#">Contact</a></li>
+	          </ul>
+	        </nav>
+	        <h3 class="text-muted">Microbets</h3>
+	      </div>
 
-      <div class="jumbotron">
-        <h1>Step right up and place your bets!</h1>
-        <p class="lead">Microbets is a tool to help friends bet againt each other. Beer pong, footraces, or even the cinnamon challenge... Place a bet on anything!</p>
-        <p><a class="btn btn-lg btn-success" href="#" role="button">Sign up today</a></p>
-      </div>
+	      <div class="jumbotron">
+	        <h1>Step right up and place your bets!</h1>
+	        <p class="lead">Microbets is a tool to help friends bet againt each other. Beer pong, footraces, or even the cinnamon challenge... Place a bet on anything!</p>
+	        <p><a class="btn btn-lg btn-success" href="#" role="button">Sign up today</a></p>
+	      </div>
 
-      <div class="row marketing">
-        <div class="col-lg-6">
-        	<div id="content"></div>
-          <script type="text/jsx">
-		      /**
-		       * @jsx React.DOM
-		       */
-		      // The above declaration must remain intact at the top of the script.
-		      var firebaseApp = "https://microbets.firebaseio.com/";
+	      <div class="row marketing">
+	        <div id="mount" class="col-lg-6">
 
-		      var converter = new Showdown.converter();
-
-		      var Bet = React.createClass({
-		        render: function() {
-		          var rawMarkup = converter.makeHtml(this.props.children.toString());
-		          return (
-		            <div className="bet">
-		              <h2 className="betAuthor">{this.props.author}</h2>
-		              <h3 classNAme="value">{"$"+this.props.val}</h3>
-		              <span dangerouslySetInnerHTML={{__html: rawMarkup}} />
-		            </div>
-		          );
-		        }
-		      });
-
-		      var BetList = React.createClass({
-		        render: function() {
-		          var betNodes = this.props.data.map(function (bet, index) {
-		            return <Bet key={index} author={bet.author} val={bet.val}>{bet.text}</Bet>;
-		          });
-		          return <div className="betList">{betNodes}</div>;
-		        }
-		      });
-
-		      var BetForm = React.createClass({
-		        handleSubmit: function() {
-		          var author = this.refs.author.getDOMNode().value.trim();
-		          var text = this.refs.text.getDOMNode().value.trim();
-		          var val = this.refs.val.getDOMNode().value.trim();
-		          this.props.onBetSubmit({author: author, text: text, val: val});
-		          this.refs.author.getDOMNode().value = '';
-		          this.refs.text.getDOMNode().value = '';
-		          this.refs.val.getDOMNode().value = '';
-		          return false;
-		        },
-		        render: function() {
-		          return (
-		            <form className="betForm" onSubmit={this.handleSubmit}>
-		              <input type="text" placeholder="Your name" ref="author" />
-		              <input type="text" placeholder="Whats the bet?" ref="text" />
-		              <input type="text" placeholder="For how much?" ref="val" />
-		              <input type="submit" value="Post" />
-		            </form>
-		          );
-		        }
-		      });
-
-		      var BetBox = React.createClass({
-		        mixins: [ReactFireMixin],
-
-		        handleBetSubmit: function(bet) {
-		          var bets = this.state.data;
-		          bets.push(bet);
-		          this.setState({data: bets});
-
-		          // Here we push the update out to Firebase
-		          this.firebaseRefs["data"].push(bet);
-		        },
-		        getInitialState: function() {
-		          return {data: []};
-		        },
-		        componentWillMount: function() {
-		          // Here we bind the component to Firebase and it handles all data updates,
-		          // no need to poll as in the React example.
-		          this.bindAsArray(new Firebase(firebaseApp + "betBox"), "data");
-		        },
-		        render: function() {
-		          return (
-		            <div className="betBox">
-		              <BetForm onBetSubmit={this.handleBetSubmit} />
-		              <h1>Previous bets</h1>
-		              <BetList data={this.state.data} />
-		            </div>
-		          );
-		        }
-		      });
-
-		      React.render(
-		        <BetBox />,
-		        document.getElementById('content')
-		      );
-		    </script>
-        </div>
-      </div>
+			      
+			</div>
+	      </div>
 
       <footer class="footer">
         <p>&copy; Ramsey McGrath 2015</p>
       </footer>
-
     </div> <!-- /container -->
 
 
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
+    <script type="text/jsx"> React.renderComponent(<App />, document.getElementById('mount')); </script>
   </body>
 </html>
